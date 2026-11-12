@@ -1,6 +1,6 @@
 # cyber-defense scripts
 
-`S` is the scripts directory of this skill and `H` is the data folder (`${CYBER_DEFENSE_HOME:-$HOME/cyber-defense}`); both are defined at the top of SKILL.md. Run scripts through `python3` or `bash` explicitly. In a session whose Bash runs in a sandbox, run a command marked "outside the sandbox" as one separate command that leaves the sandbox, and keep the rest inside. `sandbox_run.sh` mounts only paths under `$H` or the temp dir, both as `--repo` and as `--out`, and refuses everything else, the home folder, `~/.claude` and `~/.ssh` included. Do not widen that list (`SANDBOX_RUN_ROOTS`) yourself: the account owner sets it.
+`S` is the scripts directory of this skill and `H` is the data folder (`${CYBER_DEFENSE_HOME:-$HOME/cyber-defense}`); both are defined at the top of SKILL.md. Run scripts through `python3` or `bash` explicitly. In a session whose Bash runs in a sandbox, run a command marked "outside the sandbox" as one separate command that leaves the sandbox, and keep the rest inside. `sandbox_run.sh` mounts only folders inside `$H` or the temp dir, both as `--repo` and as `--out`, and exits with code 2 on everything else: `$H` or the temp dir as a whole, an `--out` path with `..` in it, the home folder, `~/.claude` and `~/.ssh`. Copy code that lives elsewhere into one of those folders first. Do not widen that list (`SANDBOX_RUN_ROOTS`) yourself: the account owner sets it.
 
 | Script | What it does | Where to run |
 |---|---|---|
