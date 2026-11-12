@@ -8,7 +8,7 @@ maxTurns: 120
 ---
 # PoC writer
 
-The invocation message gives you: `copy` (path to the code under test), `control` (path to the copy to compare against, or "none"), the `candidate` (file:line of both sides, the input, what breaks), `image` for sandbox_run.sh and `out dir`. You are not told the project or any advisory; do not look them up.
+The invocation message gives you: `copy` (path to the code under test), `control` (path to the copy to compare against, or "none": then make the control yourself, as a copy in `out dir` with the smallest patch that should close the candidate, and say so in the report), the `candidate` (file:line of both sides, the input, what breaks), `image` for sandbox_run.sh and `out dir`. You are not told the project or any advisory; do not look them up.
 
 Goal: decide by running code whether the candidate is real. A PoC that passes on both copies, or fails on both, decides nothing.
 

@@ -131,6 +131,10 @@ def main():
     a = ap.parse_args()
 
     explicit = [c.strip() for c in a.commits.split(",") if c.strip()]
+    # Commit ids come from advisory data; anything that is not hex could be read by git as an option.
+    bad = [c for c in explicit if not re.fullmatch(r"[0-9a-fA-F]{7,40}", c)]
+    if bad:
+        sys.exit(f"--commits takes hex commit ids only, got: {bad[0][:40]!r}")
     commits, msg_signal = fix_commits(a.repo, a.since, a.max_commits, explicit)
     report, seen_callee = [], {}
     refixed = defaultdict(list)  # path:func -> message-signal fix commits that added a guard inside it

@@ -36,7 +36,7 @@ Take 6 to 8 copies in different projects: with three, a single accident shifts t
 
 ## 3. Run order
 
-1. The main session checks Docker (`timeout 60 docker run --rm python:3.12-slim true`, outside the sandbox) and runs `introspector.py` for each project: the subagent has no network, and the output goes to it in the message.
+1. The main session checks Docker (`docker run --rm python:3.12-slim true` answers within a minute, outside the sandbox) and runs `introspector.py` for each project: the subagent has no network, and the output goes to it in the message.
 2. The hunter is the agent `oss-hunter`; what to write in the invocation message is in `references/briefs.md`. Do not name the project, the CVE or the bug class to it.
 3. The main session compares the findings with the advisory and with every other advisory not yet fixed in the snapshot. The PoC is written by `oss-poc-writer`, not by the main session: the main session knows the answer.
 4. Negative control: the same call on the `--at fixed` copy. If the hunter "finds" the target bug there, that is a false positive, visible without a PoC. Without this run the condition "no false findings on fixed copies" counts as not met, not as met.
@@ -44,7 +44,7 @@ Take 6 to 8 copies in different projects: with three, a single accident shifts t
 
 ## 4. Ledger and precision
 
-Enter every finding of the hunter, side findings included, as a row in `$H/findings.tsv` (`ledger.py init`; the columns are in the script's header). `label_a` is set by the refuter or by known truth (a maintainer's fix, an advisory). `label_b` is set by the account owner without looking at `label_a`.
+Enter every finding of the hunter, side findings included, as a row in `$H/findings.tsv` (`ledger.py init`; the columns are in the script's header). `label_a` is set by the refuter agent or by known truth (a maintainer's fix, an advisory). `label_b` is set by the account owner without looking at `label_a`.
 
 `ledger.py stats` prints the funnel by rung and the precision: the numerator is the rows where both labelers set TP, the denominator is all rows with two labels. A disagreement between labelers counts as not-TP, so disputed rows do not inflate precision. The 95% Wilson interval and κ are printed next to it.
 

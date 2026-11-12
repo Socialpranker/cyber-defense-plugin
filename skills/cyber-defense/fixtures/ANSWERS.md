@@ -2,7 +2,7 @@
 
 Small libraries with a known answer. They exist so that an edit to an agent's text or to the method is checked by a measurement, not by eye. The code in them is vulnerable on purpose: do not copy from it.
 
-Do not show this file or `verify.py` to an agent. Copy one `lib-*` folder into `$TMPDIR` under a neutral name and pass the path to the copy. Before a run execute `PYTHONDONTWRITEBYTECODE=1 python3 verify.py`: exit code 0 means the answers are still in the code. Run two replicas: a single one misleads about reproducibility. Record the result with `ledger.py run`, `kind=control`, and the note `fixture`.
+Do not show this file or `verify.py` to an agent. Copy one `lib-*` folder into `$TMPDIR` under a neutral name and pass the path to the copy. Before a run execute `PYTHONDONTWRITEBYTECODE=1 python3 verify.py`: exit code 0 means the answers are still in the code. Run two replicas: a single one misleads about reproducibility. Record the result with `ledger.py run <copy name> <step> control <hours> PASS|FAIL --note fixture`.
 
 Put each copy into its own parent folder: when copies sit side by side, the hunter sees the names of the neighbouring cases.
 

@@ -1,6 +1,6 @@
 # Calling subagents for a hunt and for calibration
 
-The brief texts live in the plugin's agent files (`agents/oss-*.md` at the plugin root), together with the model and the effort level. This file holds only the calling rules: what to pass in the invocation message and what to keep out of it. A subagent has not seen this conversation, so everything it needs must be in the invocation message.
+The brief texts live in the plugin's agent files (`agents/oss-*.md` at the plugin root), together with the model and the effort level. This file holds only the calling rules: what to pass in the invocation message and what to keep out of it. A subagent has not seen this conversation, so everything it needs must be in the invocation message. Every `path`, `copy`, `control` and `out dir` you pass must lie under `$H` or the temp dir: `sandbox_run.sh` refuses to mount anything else.
 
 The plugin registers the agents under its own namespace: `cyber-defense:oss-hunter`, `cyber-defense:oss-cartographer`, `cyber-defense:oss-poc-writer`, `cyber-defense:oss-refuter`. The short names below mean these agents. If the agent types are not available in the session (the plugin was enabled after the session started and `/reload-plugins` was not run), call `general-purpose` with `model: opus`, `effort: high` and the text of the agent file after its frontmatter, and append the parameters at the end.
 

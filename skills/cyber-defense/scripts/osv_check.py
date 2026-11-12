@@ -66,7 +66,8 @@ def main():
         for aff in v.get("affected", []):
             for rng in aff.get("ranges", []):
                 if rng.get("type") == "GIT":
-                    shas |= {ev["fixed"] for ev in rng.get("events", []) if "fixed" in ev}
+                    shas |= {ev["fixed"] for ev in rng.get("events", [])
+                             if re.fullmatch(r"[0-9a-f]{7,40}", str(ev.get("fixed", "")))}
         print(f"fix commits: {','.join(sorted(shas)) or '-'}")
         for ref in v.get("references", [])[:8]:
             print(f"ref: {ref.get('type')} {ref.get('url')}")

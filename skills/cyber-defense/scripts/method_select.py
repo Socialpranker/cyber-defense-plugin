@@ -107,7 +107,7 @@ def scan(root, nex):
 def ladder(s):
     main = s["langs"].most_common(1)[0][0] if s["langs"] else "?"
     nex = s["nex"]
-    rungs = [("2", "git history of incomplete fixes", "always: the cheapest step, gives the starting hypotheses", 2, "verified")]
+    rungs = [("2", "git history of incomplete fixes", "always: the cheapest step, gives the starting hypotheses", 2, "no method control recorded")]
     fmts = [(f, h) for f, h in s["fmt"].items() if h]
     binary = [f for f, _ in fmts if f in ("zip", "tar", "pickle")]
     text = [f for f, _ in fmts if f not in ("zip", "tar", "pickle")]
@@ -116,7 +116,7 @@ def ladder(s):
         rungs.append(("4a-bytes", "N-version diff of a binary format", ev, 3, "the harness failed its blind control: discrepancies are hints only, a PoC makes the finding"))
     if text:
         ev = "; ".join(f"{f} ×{len(s['fmt'][f])} ({', '.join(s['fmt'][f][:nex])})" for f in text)
-        rungs.append(("4a", "parser comparison, validator vs consumer", ev, 3, "verified"))
+        rungs.append(("4a", "parser comparison, validator vs consumer", ev, 3, "no method control recorded"))
     if s["shared"]:
         top = s["shared"][:5]
         ev = "; ".join(f"{f} in {k} files, written by {', '.join(w)} ({ex})" for k, f, w, ex in top)
@@ -126,11 +126,11 @@ def ladder(s):
         rungs.append(("2c", "class transplant from another ecosystem", ev, 4, "control not passed: query hits are hints for the hunter only"))
     if s["spec"]:
         ev = "RFC " + ", ".join(f"{r} ×{c}" for r, c in s["spec"].most_common(5))
-        rungs.append(("4-spec", "pass over the MUST/REQUIRED of the specification", ev, 2, "verified"))
-        rungs.append(("2b", "CVEs of the reference implementation", "the project cites RFCs: check whether it reimplements the protocol", 1, "verified"))
+        rungs.append(("4-spec", "pass over the MUST/REQUIRED of the specification", ev, 2, "no method control recorded"))
+        rungs.append(("2b", "CVEs of the reference implementation", "the project cites RFCs: check whether it reimplements the protocol", 1, "no method control recorded"))
     if main in ("c", "rust"):
-        rungs.append(("2a+5b", "fuzzer blind spots and your own harness with sanitizers", f"main language {main}", 4, "verified"))
-    rungs.append(("4+5a", "review from entry points and property harness", "always: the last rung, if nothing above found anything", 6, "verified"))
+        rungs.append(("2a+5b", "fuzzer blind spots and your own harness with sanitizers", f"main language {main}", 4, "no method control recorded"))
+    rungs.append(("4+5a", "review from entry points and property harness", "always: the last rung, if nothing above found anything", 6, "no method control recorded"))
     return main, rungs
 
 

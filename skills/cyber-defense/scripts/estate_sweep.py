@@ -101,7 +101,7 @@ def main():
 
     tool = "gitleaks" if a.check == "secrets" else "osv-scanner"
     if subprocess.run(["which", tool], capture_output=True).returncode != 0:
-        sys.exit(f"{tool} not installed: brew install {tool}")
+        sys.exit(f"{tool} is not installed: install it with your package manager and rerun")
     out = pathlib.Path(a.out or pathlib.Path(os.environ.get("TMPDIR", "/tmp")) / f"estate-{a.check}")
     out.mkdir(parents=True, exist_ok=True)
     targets = [r for r in repos(a.root, a.depth) if not a.only or r.name in a.only]

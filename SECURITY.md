@@ -12,12 +12,12 @@ You can expect a first reply within seven days. This is a project with a single 
 
 The plugin runs scripts on your machine and starts containers with foreign code inside, so these problems are in scope:
 
-- `sandbox_run.sh` lets code inside the container reach the network, write to the mounted sources, or read the home folder, `~/.claude` or `~/.ssh`.
+- `sandbox_run.sh` lets code inside the container reach the network when `--net` was not passed, write to the mounted sources, or mount a folder outside the data folder and the temp dir.
 - A script executes content taken from a repository under study outside the container.
-- `ledger.py gate` opens the report step for a finding that the account owner has not labeled as real.
+- `ledger.py gate` reports the gate as open for a ledger row whose `label_b` is not TP, whose PoC is not CONFIRMED or whose refuter verdict is not SURVIVES.
 - A crafted repository, file name or tool output makes the skill or an agent probe a host that is missing from the allowed-hosts list.
 
-A model that follows instructions hidden in the code it is reading (prompt injection) is a known limit of every agent. Report it when the plugin's own text or scripts make such an attack easier than it would be without the plugin.
+Two limits are known and are not vulnerabilities by themselves. The gate reads a label from a file and cannot tell who wrote it, so the rule that only the account owner sets it is an instruction to the model. The dependency-install step (`--net`) runs the studied project's build scripts with internet access by design. A model that follows instructions hidden in the code it is reading (prompt injection) is likewise a known limit of every agent. Report prompt injection when the plugin's own text or scripts make such an attack easier than it would be without the plugin.
 
 ## Vulnerabilities the plugin finds in other projects
 

@@ -15,7 +15,7 @@
   {"id": "t01", "split": "train", "should_trigger": true, "prompt": "I think we were hacked: an unknown process on the server and outbound traffic at night"},
   {"id": "t02", "split": "train", "should_trigger": true, "prompt": "What does this file do? It came as an attachment and looks like obfuscated js"},
   {"id": "t03", "split": "train", "should_trigger": true, "prompt": "Write a YARA rule for this sample"},
-  {"id": "t04", "split": "train", "should_trigger": true, "prompt": "Does CVE-2025-1234 in urllib3 affect us?"},
+  {"id": "t04", "split": "train", "should_trigger": true, "prompt": "Does CVE-2024-3094 in xz affect us?"},
   {"id": "t05", "split": "train", "should_trigger": true, "prompt": "Look for vulnerabilities in this open-source HTTP library, I want to send the maintainers a report"},
   {"id": "t06", "split": "train", "should_trigger": true, "prompt": "Check all my projects for leaked keys and vulnerable dependencies"},
   {"id": "t07", "split": "train", "should_trigger": true, "prompt": "May I scan 203.0.113.7 with nmap?"},

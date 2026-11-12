@@ -4,11 +4,13 @@ Read this for a task under SKILL.md §5.6 ("look for vulnerabilities in <repo>",
 
 Contents: §1 choosing a target · §1a choosing methods and the ladder · §2 git history · §2a fuzzer blind spots · §2b CVEs of the reference implementation · §2c class transplant · §3 entry-point map · §4 review and the specification pass · §4a parser comparison and the 4a-bytes mode · §4b map of shared fields · §5 PoC in a container · §5b sanitizers · §5a property harness · §6 refutation · §7 narrowing to a rule.
 
-Where the techniques come from: Anthropic's report on 500+ vulnerabilities in open source (anthropic.com/research/zero-days: a model in a VM with ordinary utilities and no special harness; the best findings came from incomplete fixes in git history and from code fuzzers do not reach) and OpenAnt (arXiv 2606.19149: a reachability filter cuts OpenSSL from 15,232 functions to 390, an adversarial check removes 49.5% of findings, a container run confirms 75.8% of the rest).
+Where the techniques come from: Anthropic's report on 500+ vulnerabilities in open source (anthropic.com/research/zero-days: a model in a VM with ordinary utilities and no custom harness; its examples include a fix found in git history that one caller of a function got and another did not, and bugs that fuzzers struggle to trigger) and OpenAnt (arXiv 2606.19149: a reachability filter that cuts the code to analyse, an adversarial check of each finding, and a run that confirms what is left).
+
+Paragraphs below that tell you to call a subagent, to split work between hunters or to pass something to a hunter are for the main session; a hunter subagent has no way to call agents and skips them.
 
 Method calibration and method controls are in `references/calibration-rules.md`. Only the main session reads that file: the hunter and other subagents do not need it, and on a control it gives the answers away.
 
-Terms. A "rung" is a method in the ladder queue (2, 2a, 4b and so on); a "step" is the section of this file with the same number. The "control group" is the fixed variant of the code, on which a PoC must stay silent. A "method control" is a check of a method on a known vulnerability; it is described in calibration-rules.md.
+Terms. A "rung" is a method in the ladder queue (2, 2a, 4b and so on); a "step" is the section of this file with the same number. The "control group" is the fixed variant of the code, on which a PoC must stay silent. For a known vulnerability it is the copy after the fix; for a new one, with no fix yet, it is a copy of the clone with your minimal proposed patch applied. Without a control run the status is INCONCLUSIVE, not CONFIRMED. The ledger names the rung that produced a finding in its `stage` column, and `ledger.py run` takes the rung as `<step>`. A "method control" is a check of a method on a known vulnerability; it is described in calibration-rules.md.
 
 The proof rule, used in §5 and everywhere a finding is confirmed, has three parts: the PoC runs and imports the real function, not a copy of it; the oracle sits in the sink, so the PoC shows the dangerous effect itself and not an intermediate value; the control group stays silent on the same input.
 
@@ -144,7 +146,7 @@ Use it when the project parses a URL, a host, a path, a header, multipart, a coo
    ```bash
    bash "$S/sandbox_run.sh" --image python:3.12-slim --repo <dir> --out <dir> -- sh -c 'PYTHONPATH=/out/deps python3 diff_harness.py adapters.py --bytes --corpus seeds --structural zip --mutate 300 --json /out/diffs.json'
    ```
-   Put into `seeds` ordinary valid files of the format that the target accepts: for an installer that is a wheel with METADATA, WHEEL and RECORD, not a bare ZIP. `--builtin zip` and `--builtin tar` give bare archives. `--structural tar` builds about 27 variants per file from tar's ambiguities (a duplicate name, prefix, GNU longname, pax, unusual size fields, links, service records with data). `--structural zip` builds from each seed 7 variants per file from the ambiguities of the ZIP format itself: a local record with no line in the central directory, a shadow copy before the real one, one name twice in the directory, different names in the two headers, an offset to another record, two archives back to back. Without this flag random byte mutations do not reach such inputs: on a control 586 random mutations did not. Do not feed a control a seed that already contains a known bug, or the control tests looking the answer up, not the method.
+   Put into `seeds` ordinary valid files of the format that the target accepts: for an installer that is a wheel with METADATA, WHEEL and RECORD, not a bare ZIP. `--builtin zip` gives bare archives; ZIP is the only binary format the harness knows. `--structural zip` builds from each seed 7 variants per file from the ambiguities of the ZIP format itself: a local record with no line in the central directory, a shadow copy before the real one, one name twice in the directory, different names in the two headers, an offset to another record, two archives back to back. Without this flag random byte mutations do not reach such inputs: on a control 586 random mutations did not. Do not feed a control a seed that already contains a known bug, or the control tests looking the answer up, not the method.
 7. Pass each discrepancy through two filters. Meaningful: the format does not allow reading such an input in two ways. If the specification explicitly leaves the behaviour to the implementation, the discrepancy does not qualify. Stable: the discrepancy survives the normalization the consumer applies (case-insensitive path comparison, dropping directories). Write those that pass both into `<dir>/discrepancies.md`, and for each one find in the target's ecosystem a pairing "implementation A validates, implementation B executes". Only pairings go further; a discrepancy without a pairing stays an entry in the catalogue.
 
 ## 4b. Map of shared fields
@@ -164,11 +166,14 @@ The cartographer is a language model that reads code without running it, so a 4b
 Foreign code is built and run only through `sandbox_run.sh`: a build executes the project's code (postinstall, setup.py, Makefile), and the agent works on the host without a VM. The script needs the Docker socket, so in a sandboxed session it is one command outside the Bash sandbox.
 
 ```bash
-# dependencies: the only step with network; the result goes to /out
+# dependencies: the only step with network. It runs the project's build scripts with internet
+# access, so pass it nothing secret. The result goes to /out
 bash "$S/sandbox_run.sh" --image python:3.12-slim --repo <clone> --out <dir> --net -- pip install --target /out/deps -e .
 # the PoC: no network
 bash "$S/sandbox_run.sh" --image python:3.12-slim --repo <clone> --out <dir> -- sh -c 'PYTHONPATH=/out/deps python3 /out/poc.py'
 ```
+
+Every `sandbox_run.sh` call starts from a fresh copy of the sources in `/work`, and anything not written under `/out` is gone when the call ends. Install dependencies into `/out` (`pip install --target /out/deps`, `npm install --prefix /out/deps`), or build and run the PoC in one call.
 
 Pick the image for the language: `python:3.12-slim`, `node:22-slim`, `golang:1.23`, `gcc:14`, `rust:1`. The process runs as nobody; use `--root` only if the build refuses otherwise.
 
