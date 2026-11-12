@@ -58,7 +58,7 @@ In an interactive `claude` session:
 
 To install from a local clone, pass the path to the clone to `/plugin marketplace add` instead.
 
-The scripts need Python 3 and use only the standard library. Docker is needed for the steps that run foreign code: `sandbox_run.sh` starts a container with the sources mounted read-only, as the user `nobody`, and mounts only folders under `CYBER_DEFENSE_HOME` or the temp dir. The container has no network, with one exception: the dependency-install step passes `--net`, and that step runs the project's own build scripts with internet access. Without Docker these steps are reported as blocked.
+The scripts need Python 3 and use only the standard library. Docker is needed for the steps that run foreign code: `sandbox_run.sh` starts a container with the sources mounted read-only, as the user `nobody`, and mounts only folders inside `CYBER_DEFENSE_HOME` or the temp dir, never either of the two as a whole. The container has no network, with one exception: the dependency-install step passes `--net`, and that step runs the project's own build scripts with internet access. Without Docker these steps are reported as blocked.
 
 Some steps call other tools when they are installed: `gitleaks` and `osv-scanner` for the sweep of your own projects, `semgrep` for code rules, and GNU `timeout` (on macOS it comes with `brew install coreutils`) for the Docker health check.
 
