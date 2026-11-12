@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Fixtures still contain their planted answers
+        run: PYTHONDONTWRITEBYTECODE=1 python3 skills/cyber-defense/fixtures/verify.py
+
+      - name: Python scripts compile
+        run: |
+          for f in skills/cyber-defense/scripts/*.py skills/cyber-defense/fixtures/verify.py skills/cyber-defense/references/examples/*.py; do
+            python3 -m py_compile "$f"
+            echo "ok   $f"
+          done
+
+      - name: Shell scripts parse
+        run: |
+          for f in skills/cyber-defense/scripts/*.sh tests/*.sh; do
+            bash -n "$f"
+            echo "ok   $f"
+          done
+
+      - name: Manifests and evals are valid JSON, versions agree
+        run: |
+          python3 -c "
+          import json
+          for f in ['.claude-plugin/plugin.json', '.claude-plugin/marketplace.json',
+                    'skills/cyber-defense/evals/evals.json', 'skills/cyber-defense/evals/trigger_cases.json']:
+              json.load(open(f))
+              print('ok  ', f)
+          p = json.load(open('.claude-plugin/plugin.json'))['version']
+          m = json.load(open('.claude-plugin/marketplace.json'))['metadata']['version']
+          assert p == m, f'plugin.json {p} != marketplace.json {m}'
+          print('ok   versions agree:', p)
+          "
+
+      - name: Report gate stays closed without the second labeler's mark
+        run: bash tests/test_gate.sh

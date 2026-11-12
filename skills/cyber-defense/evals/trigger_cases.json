@@ -1,0 +1,38 @@
+{
+ "_doc": "Trigger eval for the skill description, for an eval runner of your choice. The negatives are deliberately close: requests that belong to neighbouring skills.",
+ "competitors": [
+  "fynd-dyrka",
+  {
+   "name": "code-review",
+   "description": "Review the current diff, or a PR number/branch/path target, for correctness bugs (plus reuse/simplification/efficiency cleanups where the model's review recipe covers them) at the given effort level. Pass --comment to post findings as inline PR comments, or --fix to apply the findings to the working tree after the review."
+  },
+  {
+   "name": "security-review",
+   "description": "Complete a security review of the pending changes on the current branch"
+  }
+ ],
+ "cases": [
+  {"id": "t01", "split": "train", "should_trigger": true, "prompt": "I think we were hacked: an unknown process on the server and outbound traffic at night"},
+  {"id": "t02", "split": "train", "should_trigger": true, "prompt": "What does this file do? It came as an attachment and looks like obfuscated js"},
+  {"id": "t03", "split": "train", "should_trigger": true, "prompt": "Write a YARA rule for this sample"},
+  {"id": "t04", "split": "train", "should_trigger": true, "prompt": "Does CVE-2025-1234 in urllib3 affect us?"},
+  {"id": "t05", "split": "train", "should_trigger": true, "prompt": "Look for vulnerabilities in this open-source HTTP library, I want to send the maintainers a report"},
+  {"id": "t06", "split": "train", "should_trigger": true, "prompt": "Check all my projects for leaked keys and vulnerable dependencies"},
+  {"id": "t07", "split": "train", "should_trigger": true, "prompt": "May I scan 203.0.113.7 with nmap?"},
+  {"id": "t08", "split": "test", "should_trigger": true, "prompt": "The model refused with a cyber flag, what now"},
+  {"id": "t09", "split": "test", "should_trigger": true, "prompt": "I want to take part in a bug bounty on HackerOne, where do I start with this program"},
+  {"id": "t10", "split": "test", "should_trigger": true, "prompt": "I need a Sigma rule for an ssh login from an unusual country"},
+  {"id": "t11", "split": "test", "should_trigger": true, "prompt": "The maintainer released a fix for our report, check whether the hole is closed"},
+  {"id": "t12", "split": "test", "should_trigger": true, "prompt": "The nginx logs show strange requests to /.env, is this an attack?"},
+  {"id": "n01", "split": "train", "should_trigger": false, "prompt": "Check the security of our service before the release"},
+  {"id": "n02", "split": "train", "should_trigger": false, "prompt": "Look at the diff in this branch for bugs"},
+  {"id": "n03", "split": "train", "should_trigger": false, "prompt": "Reply to the reviewer in my PR in someone else's repository"},
+  {"id": "n04", "split": "train", "should_trigger": false, "prompt": "I deployed a new version, check production"},
+  {"id": "n05", "split": "train", "should_trigger": false, "prompt": "Are there leaked keys in this service's repository?"},
+  {"id": "n06", "split": "test", "should_trigger": false, "prompt": "I rewrote the authorization, take a fresh look"},
+  {"id": "n07", "split": "test", "should_trigger": false, "prompt": "Review the architecture, where is the tech debt"},
+  {"id": "n08", "split": "test", "should_trigger": false, "prompt": "Do a security review of the changes in the current branch"},
+  {"id": "n09", "split": "test", "should_trigger": false, "prompt": "Tests fail after a dependency update, figure it out"},
+  {"id": "n10", "split": "test", "should_trigger": false, "prompt": "Add rate limiting to the login endpoint"}
+ ]
+}

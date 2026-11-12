@@ -1,0 +1,17 @@
+{
+  "name": "cyber-defense-plugin",
+  "owner": {
+    "name": "Socialpranker"
+  },
+  "metadata": {
+    "version": "0.1.0",
+    "description": "Marketplace for the cyber-defense plugin"
+  },
+  "plugins": [
+    {
+      "name": "cyber-defense",
+      "description": "Defensive security work: scope check, incident response, malware triage, detection rules, CVE triage, and a pipeline for finding vulnerabilities in open source with private disclosure.",
+      "source": "./"
+    }
+  ]
+}
