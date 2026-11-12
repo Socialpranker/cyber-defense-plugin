@@ -33,19 +33,25 @@ repo="$(cd "$repo" && pwd -P)"
 resolve() { [ -d "$1" ] && (cd "$1" && pwd -P) || true; }
 roots=()
 # TMPDIR comes from the caller's environment: one that points into the home folder is not a temp dir.
-tmp="$(resolve "${TMPDIR:-/tmp}")"; case "$tmp" in "$HOME"|"$HOME"/*) tmp="" ;; esac
-IFS=: read -r -a candidates <<< "${CYBER_DEFENSE_HOME:-$HOME/cyber-defense}:$tmp:/tmp:${SANDBOX_RUN_ROOTS:-}"
-for c in "${candidates[@]}"; do
+# Every comparison uses the resolved home folder, because --repo and the roots are resolved too.
+home="$(cd "$HOME" && pwd -P)"
+tmp="$(resolve "${TMPDIR:-/tmp}")"; case "$tmp" in "$home"|"$home"/*) tmp="" ;; esac
+# Only SANDBOX_RUN_ROOTS is a ':'-separated list. The other candidates stay whole: a TMPDIR like
+# "/tmp/x:/home/me/Documents" must not be split into a second root.
+candidates=("${CYBER_DEFENSE_HOME:-$HOME/cyber-defense}" "$tmp" /tmp)
+IFS=: read -r -a extra <<< "${SANDBOX_RUN_ROOTS:-}"
+for c in "${candidates[@]}" ${extra[@]+"${extra[@]}"}; do
+  [ -n "$c" ] || continue
   r="$(resolve "${c%/}")"
-  # A root that is $HOME or contains it (/Users, /home) would allow everything.
+  # A root that is the home folder or contains it (/Users, /home) would allow everything.
   case "$r" in ""|/) continue ;; esac
-  case "$HOME/" in "$r"/*) continue ;; esac
+  case "$home/" in "$r"/*) continue ;; esac
   roots+=("$r")
 done
 # Only a folder strictly inside a root is mounted, never the root: the whole of /tmp or of the
 # data folder holds other programs' files and unpublished findings.
 refuse() {
-  case "$1" in "$HOME"|"$HOME/.claude"*|"$HOME/.ssh"*|/) echo "refusing to mount $1" >&2; exit 2 ;; esac
+  case "$1" in "$home"|"$home/.claude"*|"$home/.ssh"*|/) echo "refusing to mount $1" >&2; exit 2 ;; esac
   local r
   for r in "${roots[@]}"; do case "$1" in "$r"/*) return 0 ;; esac; done
   echo "refusing to mount $1: not a folder inside the data folder or the temp dir (see SANDBOX_RUN_ROOTS)" >&2; exit 2
