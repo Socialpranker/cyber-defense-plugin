@@ -1,7 +1,7 @@
 {
   "name": "cyber-defense",
   "description": "Defensive security work for code and systems you own, and for open-source code with private disclosure to its owner: a scope check before any active probe of a live host, a protocol for model cyber refusals, incident response, static malware triage, YARA/Sigma/semgrep rules with positive and negative controls, CVE triage, PoC confirmation, a sweep of your repositories for leaked secrets and vulnerable dependencies, and a pipeline for finding vulnerabilities in open source (method ladder, container PoCs, a refuter agent, and a report gate that stays closed until the finding carries the owner's label). Ships four subagents: oss-hunter, oss-cartographer, oss-poc-writer, oss-refuter.",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "author": {
     "name": "Ivan Teresenko"
   },

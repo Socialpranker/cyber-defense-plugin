@@ -9,7 +9,10 @@ Usage:
   ledger.py init                       create the file with a header (idempotent)
   ledger.py stats [--project P]        funnel by stage, precision with 95% Wilson CI, Cohen's kappa
   ledger.py gate ID                    exit 0 only if the finding may go into a report draft:
-                                       poc CONFIRMED, refuter SURVIVES, label_b TP (set by the account owner), no FP
+                                       poc CONFIRMED, refuter SURVIVES, label_b TP (set by the account owner), no FP,
+                                       prefilter not DISMISS
+  ledger.py migrate                    add the prefilter column to a ledger with the old header
+                                       (keeps findings.tsv.bak; a no-op on the new header)
   ledger.py run PROJECT STEP KIND HOURS OUTCOME [--novelty N] [--note T]
                                        append one rung of the method ladder to the runs journal
   ledger.py runs [--step S]            per step: runs, hours, outcomes, finds per hour
@@ -27,7 +30,9 @@ Columns (TSV, edit by hand or with any editor):
   project   e.g. somelib
   run       cal1, cal2, hunt-<name>
   title     short, no exploit details
-  stage     method step that produced it: 2, 2a, 2b, 2c, 3, 4, 4-spec, 4a, 4a-bytes, 4b, 5a, rejected-review
+  stage     method step that produced it: 2, 2a, 2b, 2c, 3, 4, 4-spec, 4a, 4a-bytes, 4b, 5a, stronger-recon, rejected-review
+  prefilter - | PASS | DISMISS | NEEDS   verdict of the pre-PoC filter (oss-hunt §4c); '-' = not run.
+            A ledger with the old header (no such column) still loads, every row reads as '-'.
   poc       NONE | CONFIRMED | NOT_REPRODUCED | BLOCKED | INCONCLUSIVE | ERROR
   refuter   - | SURVIVES | REFUTED | NEEDS
   label_a   - | TP | FP     first labeler (refuter model, or ground truth: maintainer fix/advisory)
@@ -51,8 +56,10 @@ METHOD_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "re
 RUN_COLS = ["date", "project", "step", "kind", "hours", "outcome", "novelty", "method_sha", "note"]
 OUTCOMES = {"control": {"PASS", "FAIL", "TIMEOUT", "BLOCKED"}, "target": {"FOUND", "NONE", "TIMEOUT", "BLOCKED"}}
 NOVELTY = ["-", "known", "subvariant", "new-eco", "new"]
-COLS = ["id", "project", "run", "title", "stage", "poc", "refuter", "label_a", "label_b", "note"]
+COLS = ["id", "project", "run", "title", "stage", "prefilter", "poc", "refuter", "label_a", "label_b", "note"]
+OLD_COLS = [c for c in COLS if c != "prefilter"]
 ALLOWED = {
+    "prefilter": {"-", "PASS", "DISMISS", "NEEDS"},
     "poc": {"NONE", "CONFIRMED", "NOT_REPRODUCED", "BLOCKED", "INCONCLUSIVE", "ERROR"},
     "refuter": {"-", "SURVIVES", "REFUTED", "NEEDS"},
     "label_a": {"-", "TP", "FP"},
@@ -67,7 +74,9 @@ def load():
         rows = list(csv.DictReader(f, delimiter="\t"))
     errors, seen = [], set()
     for n, r in enumerate(rows, start=2):
-        if list(r.keys()) != COLS:
+        if list(r.keys()) == OLD_COLS:
+            r["prefilter"] = "-"
+        elif list(r.keys()) != COLS:
             sys.exit(f"{PATH}: header must be {' '.join(COLS)}")
         if r["id"] in seen:
             errors.append(f"line {n}: duplicate id {r['id']}")
@@ -112,6 +121,29 @@ def cmd_init(_):
         with open(path, "w") as f:
             f.write("\t".join(cols) + "\n")
         print(f"created: {path}")
+
+
+def cmd_migrate(_):
+    with open(PATH, newline="") as f:
+        lines = f.read().splitlines()
+    head = lines[0].split("\t")
+    if head == COLS:
+        print(f"already migrated: {PATH}")
+        return
+    if head != OLD_COLS:
+        sys.exit(f"{PATH}: unknown header, not touching it")
+    load()  # refuse to rewrite a ledger that does not validate
+    at = COLS.index("prefilter")
+    out = []
+    for n, line in enumerate(lines):
+        cells = line.split("\t")
+        if len(cells) != len(OLD_COLS):
+            sys.exit(f"line {n + 1}: {len(cells)} cells, expected {len(OLD_COLS)}; nothing written")
+        out.append("\t".join(cells[:at] + ["prefilter" if n == 0 else "-"] + cells[at:]))
+    os.replace(PATH, PATH + ".bak")
+    with open(PATH, "w") as f:
+        f.write("\n".join(out) + "\n")
+    print(f"migrated {len(out) - 1} rows; old file kept as {PATH}.bak")
 
 
 def method_sha():
@@ -177,6 +209,8 @@ def cmd_stats(a):
     print("\nfunnel")
     steps = [
         ("candidates", rows),
+        ("prefilter DISMISS", [r for r in rows if r["prefilter"] == "DISMISS"]),
+        ("sent to PoC", [r for r in rows if r["poc"] != "NONE"]),
         ("PoC CONFIRMED", [r for r in rows if r["poc"] == "CONFIRMED"]),
         ("refuter SURVIVES", [r for r in rows if r["refuter"] == "SURVIVES"]),
     ]
@@ -223,6 +257,8 @@ def cmd_gate(a):
         why.append(f"poc is {r['poc']}, needs CONFIRMED")
     if r["refuter"] != "SURVIVES":
         why.append(f"refuter is {r['refuter']}, needs SURVIVES")
+    if r["prefilter"] == "DISMISS":
+        why.append("prefilter is DISMISS: set it to PASS with the reason it was raised back, or drop the finding")
     if "FP" in (r["label_a"], r["label_b"]):
         why.append("a labeler marked it FP")
     elif r["label_b"] != "TP":
@@ -232,6 +268,8 @@ def cmd_gate(a):
         print(f"gate CLOSED for {a.id}: " + "; ".join(why))
         sys.exit(1)
     print(f"gate OPEN for {a.id}: draft allowed; sending still needs the account owner's explicit \"send it\"")
+    if r["prefilter"] == "-":
+        print("warning: no prefilter verdict recorded for this finding (oss-hunt §4c)")
     print("calibration (informational, calibration-rules.md §1): " + "; ".join(precision_lines(rows)))
     if os.path.exists(RUNS) and not any(x["kind"] == "target" and x["project"] == r["project"] for x in load_runs()):
         print(f"warning: runs.tsv has no target row for project {r['project']!r}: log each rung with `ledger.py run`")
@@ -241,6 +279,7 @@ def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("init").set_defaults(fn=cmd_init)
+    sub.add_parser("migrate").set_defaults(fn=cmd_migrate)
     s = sub.add_parser("stats")
     s.add_argument("--project")
     s.set_defaults(fn=cmd_stats)

@@ -2,7 +2,7 @@
 
 Read this for a task under SKILL.md §5.6 ("look for vulnerabilities in <repo>", bug bounty on open-source code). Permission, the journal, the duplicate check and the report are described in §5.6; this file covers only the search. `S` is the scripts directory of this skill (the `scripts/` folder next to this `references/` folder) and `H` is the data folder (`${CYBER_DEFENSE_HOME:-$HOME/cyber-defense}`); both are defined at the top of SKILL.md.
 
-Contents: §1 choosing a target · §1a choosing methods and the ladder · §2 git history · §2a fuzzer blind spots · §2b CVEs of the reference implementation · §2c class transplant · §3 entry-point map · §4 review and the specification pass · §4a parser comparison and the 4a-bytes mode · §4b map of shared fields · §5 PoC in a container · §5b sanitizers · §5a property harness · §6 refutation · §7 narrowing to a rule.
+Contents: §1 choosing a target · §1a choosing methods and the ladder · §2 git history · §2a fuzzer blind spots · §2b CVEs of the reference implementation · §2c class transplant · §3 entry-point map · §4 review and the specification pass · §4a parser comparison and the 4a-bytes mode · §4b map of shared fields · §4c filter before the PoC · §5 PoC in a container · §5b sanitizers · §5a property harness · §6 refutation · §7 narrowing to a rule.
 
 Where the techniques come from: Anthropic's report on 500+ vulnerabilities in open source (anthropic.com/research/zero-days: a model in a VM with ordinary utilities and no custom harness; its examples include a fix found in git history that one caller of a function got and another did not, and bugs that fuzzers struggle to trigger) and OpenAnt (arXiv 2606.19149: a reachability filter that cuts the code to analyse, an adversarial check of each finding, and a run that confirms what is left).
 
@@ -163,6 +163,29 @@ The cartographer is a language model that reads code without running it, so a 4b
 4. Parallel paths: list every branch that handles one request (cache, error, retry, upgrade, keep-alive) and write out the invariants the code checks somewhere. For each pair "branch, invariant" mark whether the invariant holds. A pair where it does not is a candidate. If the candidate is about unread connection bytes, the PoC tries three deliveries: everything in one write, the tail after the server's response, and the tail past the first read boundary. On a control the first delivery failed although the bug was there.
 5. Save the table to `<dir>/fields.md`, number the candidates by decreasing confidence and send them to steps 5 and 6 in that order.
 
+## 4c. Filter before the PoC
+
+A PoC is the most expensive step: a separate agent, a build, Docker. So before it every candidate goes through seven checks made by reading the code and the documentation. The checks come from Trail of Bits' vulnerability-triage-brocards. They are not made by whoever found the candidate: a hunter tends to defend its own hypothesis, and on a control the main session knows the answer. Who makes them is said in `references/briefs.md`.
+
+| No. | Check | DISMISS if |
+|---|---|---|
+| 1 | Threat model | you cannot name an attacker who does not own the process, and the trust boundary their input crosses |
+| 2 | Exploit from heaven | to deliver the input the attacker already needs at least the power the bug gives: writing the config, running code, administrator rights |
+| 3 | Usage | no caller in the clone (public API, examples, integration tests) passes attacker data here |
+| 4 | Standard behaviour | the specification prescribes it, or the reference implementation behaves the same way |
+| 5 | Documented behaviour | the documentation or `SECURITY.md` says in so many words that this is the caller's responsibility or is not treated as a vulnerability |
+| 6 | Cure worse than the disease | every fix breaks what the function exists for |
+| 7 | A report is not an argument | applies to other people's advisories (SKILL.md §5.4): judge by the technical description; a CVE number and a CVSS score speak neither for nor against |
+
+The verdict of each check is PASS, DISMISS or NEEDS. DISMISS is given only with a quote: file:line or a line of a document. Without a quote it is NEEDS. The candidate's result is DISMISS if any check gave DISMISS; otherwise NEEDS if any check gave NEEDS; otherwise PASS. PASS and NEEDS go to step 5: what reading did not decide, a run decides.
+
+Restrictions, each of which cost a missed vulnerability on calibration:
+- Checks 4 and 5 do not dismiss a candidate where the specification requires the check (MUST, REQUIRED from step 4). An example or documentation that leaves the check to the application does not make the behaviour documented.
+- "Unlikely", "the application should check it itself" and "an example does it this way" without a quote give NEEDS, not DISMISS.
+- Not an argument against: "only in debug mode", "needs local access", until you have named who has that mode or access in real use. Not an argument for: "a similar bug got a CVE", "better safe than sorry".
+
+Write the verdict into the `prefilter` column of the ledger, and for DISMISS the check number and the quote into `note`. The main session rereads all DISMISS rows together: a candidate dismissed by check 2 comes back to life if another candidate gives the attacker that very power.
+
 ## 5. Proof in a container
 
 Foreign code is built and run only through `sandbox_run.sh`: a build executes the project's code (postinstall, setup.py, Makefile), and the agent works on the host without a VM. The script needs the Docker socket, so in a sandboxed session it is one command outside the Bash sandbox.
@@ -171,9 +194,17 @@ Foreign code is built and run only through `sandbox_run.sh`: a build executes th
 # dependencies: the only step with network. It runs the project's build scripts with internet
 # access, so pass it nothing secret. The result goes to /out
 bash "$S/sandbox_run.sh" --image python:3.12-slim --repo <clone> --out <dir> --net -- pip install --target /out/deps -e .
-# the PoC: no network
-bash "$S/sandbox_run.sh" --image python:3.12-slim --repo <clone> --out <dir> -- sh -c 'PYTHONPATH=/out/deps python3 /out/poc.py'
+# the PoC: no network, the same command on the copy and on the control group, the status is the first output line
+python3 "$S/poc_pair.py" run --image python:3.12-slim --copy <clone> --control <fixed copy> --out <dir> -- sh -c 'PYTHONPATH=/out/deps python3 /out/poc.py'
 ```
+
+**The PoC protocol.** A PoC prints three markers to stdout, each on its own line and flushed:
+- `POC_REACHED` immediately before the oracle evaluates its condition: the environment was built, the server came up, the input was delivered;
+- `POC_HIT` if the oracle saw the violation (the sink was reached), or `POC_MISS` if the oracle ran and there was no violation.
+
+`POC_REACHED` is needed because silence is ambiguous: a PoC that crashes on an import on the fixed copy does not print `POC_HIT` either, and without the marker that reads as "the control group behaves correctly". `poc_pair.py` computes the status from the saved stdout; the PoC's author does not read it off their own output. A run without `POC_REACHED` on any copy gives ERROR. The script does not read stderr, so a traceback cannot fake a marker. The property harness (§5a) and a run under a sanitizer (§5b) follow the same protocol: a wrapper around them prints the markers.
+
+**A PoC does not know which copy it runs on.** `poc_pair.py` mounts every copy at `/src` with one command and one environment, in random order. So a PoC has no branch on a path, a folder name, a package version or an environment variable, and it writes nothing to `/out`: a file left by the first run would change the second. A PoC that checks the version instead of the behaviour proves only the version number.
 
 Every `sandbox_run.sh` call starts from a fresh copy of the sources in `/work`, and anything not written under `/out` is gone when the call ends. Install dependencies into `/out` (`pip install --target /out/deps`, `npm install --prefix /out/deps`), or build and run the PoC in one call.
 
@@ -183,7 +214,7 @@ Build an old version with dependencies as of its release date: `replay_prep.sh` 
 
 The proof rule stated at the top of this file applies unchanged: the oracle in the sink, a control group with the fixed variant. For C/C++ the proof is in §5b.
 
-Record a PoC's outcome as one of six statuses, in the hunter's report and in the `poc` column of the `ledger.py` ledger. CONFIRMED: the sink was reached and the control group behaves correctly. NOT_REPRODUCED: the PoC ran and the sink was not reached. BLOCKED: it could not be run (Docker returned 3, the build failed, a dependency is missing); this is not an argument against the finding. INCONCLUSIVE: it ran, but the output does not decide the question. ERROR: the PoC itself is broken. NONE: no PoC was written. The statuses are separate because "Docker was down" and "did not reproduce", written the same way, make a table useless for telling what was actually checked.
+Record a PoC's outcome as one of six statuses, in the hunter's report and in the `poc` column of the `ledger.py` ledger. `poc_pair.py` prints five of them; do not replace its line with your own reading. CONFIRMED: `POC_HIT` on the copy and `POC_MISS` on the control group, both after `POC_REACHED`. NOT_REPRODUCED: `POC_MISS` on the copy. BLOCKED: it could not be run (Docker returned 3, the build failed, a dependency is missing); this is not an argument against the finding. INCONCLUSIVE: the oracle ran, but the output does not decide the question, which includes `POC_HIT` on both copies. ERROR: the PoC itself is broken, which includes a missing `POC_REACHED` on any copy. NONE: no PoC was written. The statuses are separate because "Docker was down" and "did not reproduce", written the same way, make a table useless for telling what was actually checked.
 
 ## 5b. Sanitizers and a harness for C/C++
 
@@ -198,6 +229,7 @@ A PoC for C/C++ counts only if a sanitizer reports an error in the project's cod
 - You need a reproducible input with an ASan report (`heap-buffer-overflow`, `use-after-free` and the like) whose top frame is in the project's code, not in the harness.
 - Three runs in a row give the same result. Crashes with the same three top stack frames count as one finding.
 - Control group: the same input on the fixed version, or with the check restored, passes without a report.
+- A shell wrapper prints the markers: `POC_REACHED` before the binary starts, and after it `POC_HIT` if the log holds a sanitizer report with the top frame in the project's code, otherwise `POC_MISS`.
 
 Cover the functions from §2a that the OSS-Fuzz fuzzer does not reach with your own libFuzzer harness. The template, and the rules under which a crash counts as the project's bug and not the harness's, are in `references/examples/fuzz_target.c`. Write the harness against the public API with the same initialization calls the project's tests use, and run it with `-fsanitize=fuzzer,address` and `-max_total_time=600` in a container without network. A crash of a harness that calls an internal function directly or breaks a documented contract is ERROR, not a finding.
 

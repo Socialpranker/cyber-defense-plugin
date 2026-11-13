@@ -73,7 +73,7 @@ Only the account owner changes the session's effort level, through `/effort`, an
 | Sweep of your own projects and reading its output (§5.7) | main session | most capable covered model | `medium` |
 | Calibration on a blind copy (`references/calibration-rules.md`) | agent `oss-hunter`, never told the CVE | from its frontmatter | from its frontmatter |
 | Map of shared fields on a large project and on a control (oss-hunt §4b) | agent `oss-cartographer` | from its frontmatter | from its frontmatter |
-| PoC for a candidate and its refutation (oss-hunt §5, §6) | agents `oss-poc-writer`, `oss-refuter` | from their frontmatter | from their frontmatter |
+| Filter before the PoC, PoC for a candidate and its refutation (oss-hunt §4c, §5, §6) | agents `oss-refuter` (`mode: prefilter`), `oss-poc-writer`, `oss-refuter` | from their frontmatter | from their frontmatter |
 | Code reconnaissance before the OSS ladder: entry-point map, field map, ranked candidates (oss-hunt §1a) | separate session per target | stronger model of another family | the session's |
 | Second opinion on a finding before `label_b` (§5.6), except findings from that reconnaissance | separate session | stronger model of another family | the session's |
 
@@ -121,9 +121,11 @@ YARA for files, Sigma for logs, semgrep for code. Do not deliver a rule without 
 
 Show the output of both runs. A rule that fired on a clean control gets narrowed, not delivered with a caveat.
 
+A run that evaluated nothing is not a control. Before you write "silent on clean files", confirm from the output that the tool read the files: `semgrep --test` prints "All tests passed" even with zero tests evaluated, when the test file's extension does not match the rule's language; `yara` is silent both on an empty folder and on a rule whose condition can never fire (`uint32(0) == 0x504B0304` instead of `0x04034B50`: byte order). The positive control catches the second case, the count of files read in the output catches the first.
+
 ### 5.4. CVE triage and confirming a vulnerability
 
-- "Does this CVE affect us": the package version comes from the lock file, not from memory; affected versions, the fixed version and the fix commit come from `osv_check.py --id <CVE|GHSA>` (§8); whether the affected function is called is decided from the code (`grep` on imports and calls, compared with the diff of the fix commit). Answer one of three: affected, not affected, or the version is affected but the function is not called.
+- "Does this CVE affect us": the package version comes from the lock file, not from memory; affected versions, the fixed version and the fix commit come from `osv_check.py --id <CVE|GHSA>` (§8); whether the affected function is called is decided from the code (`grep` on imports and calls, compared with the diff of the fix commit). Answer one of three: affected, not affected, or the version is affected but the function is not called. Judge by the technical description and the code, not by the score: a high CVSS on someone's advisory does not make you affected, and a missing CVE number does not make you safe (checks 1–3 and 7 of oss-hunt §4c).
 - Confirmation: a PoC against your own code, locally, by the proof rule. The proof rule has three parts: the PoC runs and imports the real function, not a copy of it; the oracle sits in the sink, so the PoC shows the dangerous effect itself and not an intermediate value; a control group, the fixed variant of the code, stays silent on the same input. Against a live host only after §2 passes.
 - Copy the CVE number and the package name from the source: one invented identifier devalues the whole analysis.
 
@@ -151,6 +153,9 @@ This is research the account owner starts on their own initiative, not on commis
 - Open source: read `references/oss-hunt.md` and follow its steps. Right after the clone, `method_select.py` picks the methods that fit the target and puts them into a ladder (oss-hunt §1a): rungs go one at a time, a CONFIRMED candidate goes to refutation at once, and the ladder stops when a finding passes the gate or the rungs run out (the exact rule is oss-hunt §1a). Each rung is written to the runs journal with `ledger.py run`. Work on a local clone only: `git clone --template= <url> "$H/oss/<repo>"` (`--template=` creates no `.git/hooks`; if your Bash sandbox forbids writes to `.git/config`, run this one command outside it). Foreign code is built and run only through `sandbox_run.sh`. Make no requests to other people's instances of this software (demo sites, users' services): that is already a live system of another party.
 - Live bug bounty targets: only hosts in the program's scope and only methods the program allows. Before active checks ask the account owner to add these hosts to `scope.txt` with a comment `# bounty <program> until <date>` and to remove them when the work ends; this way the §2 check works without exceptions. If the program forbids automation, run no nuclei, no ffuf and no active layers of fynd-dyrka's `scan.py`: manual requests only, within the limit.
 - Access to other people's data during a check (someone's account, someone's files): stop at the first proof, save the minimum the report needs, open and download nothing else.
+- A live target has no control group (no fixed copy in a container), so every observation gets its own control request. Read `references/live-controls.md` before the first candidate: without a control from that file an observation stays a hypothesis and does not go into a report.
+
+**Retracted findings.** Do not erase a candidate that failed the filter, the PoC, the refuter or a control request: `engagement.py retract <name> "<finding>" "<what looked like a vulnerability>" "<what refuted it>"` adds a row to the journal's "Retracted" table. The table serves two purposes: when a maintainer or a program asks "did you check this?", the answer is already written down, and the next hunt on the same target does not spend time on the same false lead.
 
 **Before the report.**
 0. `python3 "$S/ledger.py" gate <id>` returned 0: the PoC is CONFIRMED, the refuter says SURVIVES, the account owner personally set `label_b` = TP in the ledger, and there is no FP label (oss-hunt §6). Exit code 1: write no draft; the script names what is missing. Do not set `label_b` for the account owner: if a stronger model is available, first run the second opinion (`references/briefs.md`, section "Second opinion before `label_b`"), then show them the finding with its attack scenario (§6) and both probabilities and ask them to enter TP or FP. The gate also prints the calibration state; until the method is calibrated, quote no precision number for the method in a report (`references/calibration-rules.md` §1).
@@ -164,7 +169,7 @@ This is research the account owner starts on their own initiative, not on commis
 **After the report.** Public disclosure only after a fix or when the embargo ends (by the program's rules, otherwise 90 days). The maintainer requests the CVE through GHSA or a CNA; if they do not answer for 30 or more days, suggest escalation through GitHub Security or a CERT to the account owner, not publication. Status and dates go to the journal.
 
 **Checking a fix.** The maintainer sent a patch or released a version: this is not a new hunt, the PoC already sits in the finding's `out dir`.
-1. Run the same PoC on the fixed code through `sandbox_run.sh` and put the output next to the old one. The output now matches the control group: closed. The output did not change: the fix does not work, show both outputs. The PoC does not start because a signature changed: fix the PoC and repeat; "does not start" does not mean "fixed".
+1. Run the same PoC on three copies with one command: `python3 "$S/poc_pair.py" run --image <image> --copy <vulnerable> --control <fixed> --revert <fixed with the fix reverted> --out <dir> -- <PoC command>`. Make the third copy from the fixed one: `cp -R <fixed> <dir>-revert`, then `git -C <dir>-revert revert --no-commit <fix sha>` for every commit of the fix. It answers a question two copies cannot: whether this fix closed the vulnerability or something next to it in the same release did, an updated dependency for example. The line `fix: PROVEN` means the PoC fires before the fix, is silent with it, and fires again once it is reverted. On `fix: NOT_PROVEN` with its reason, show the account owner the output of all three runs. The status ERROR means the PoC did not reach the oracle, usually because a signature changed: fix the PoC and repeat; "does not start" does not mean "fixed". An old PoC without markers first gets them by the protocol of oss-hunt §5.
 2. Check for a bypass: a patch often closes exactly the input the PoC used. Run neighbouring inputs of the same class and the second place that calls the same function (`fix_history.py` shows sibling call sites without the fix).
 3. Read the fix diff from the entry point: the change may have introduced something new.
 4. The answer to the maintainer is short: what was checked, the output before and after, the verdict (closed, not closed, bypassed another way). A bypass is a new finding: it goes through the gate again and is not appended to the old report. The AI-policy check of item 3 above applies to this answer too, and the account owner sends it.
@@ -178,7 +183,9 @@ python3 "$S/estate_sweep.py" secrets --root <dir> [--only <folder>…]   # gitle
 python3 "$S/estate_sweep.py" deps --root <dir> [--only <folder>…]      # osv-scanner, needs network
 ```
 
-`--root` is the folder that holds the account owner's repositories (default: the current directory), search depth 2. Secrets are masked in the output: rule, file, commit, date. Reading the output:
+`--root` is the folder that holds the account owner's repositories (default: the current directory), search depth 2. Secrets are masked in the output: rule, file, commit, date.
+
+Every repository ends in one of three outcomes: `flagged` (it has findings), `clean` with what was measured (the number of commits or lock files), `unassessed` with the reason. "Unassessed" is not "clean": a repository with no commits or no lock file, a tool that crashed and a blocked network all produce an empty report. Exit code: 0 all clean, 1 findings, 2 some repositories unassessed, 3 both. In the answer list the unassessed repositories on a separate line with their reasons, and do not write "all clean" until the exit code is 0. Reading the output:
 - A secret in `tests/fixtures`, `examples`, documentation or a scanner's vendored code is most often false; open the line and decide. Treat a real live key as an incident in progress: the account owner revokes it at the provider, and removing it from the code comes after that.
 - Dependencies: rows are sorted by severity, one row per bug with all its ids. For the top 10 by severity in deployed projects answer by §5.4 whether you are affected. Packages from the `requirements.txt` of workers and tools that are not in production go lower.
 
@@ -204,12 +211,13 @@ Explain a term at its first mention (CSRF, DNS rebinding and so on). Mark a cons
 
 `S` and `H` are defined at the top of this file. Run scripts through `python3` or `bash` explicitly. Some sessions run Bash in a sandbox that blocks the network beyond an allowlist, the Docker socket and writes to `.git/config`; in such a session run a command marked "outside the sandbox" as one separate command that leaves it, and keep the rest inside.
 
-The full table of scripts with flags and where to run them is in `references/scripts.md`: read it before the first command of the OSS part (§5.6). Outside the OSS part three scripts are needed:
+The full table of scripts with flags and where to run them is in `references/scripts.md`: read it before the first command of the OSS part (§5.6). Outside the OSS part four scripts are needed:
 
 | Script | What it does | Where to run |
 |---|---|---|
 | `osv_check.py --id X` / `--ecosystem E --package P [--version V]` | known vulnerabilities, the fixed version, fix commits (§5.4) | outside the sandbox (api.osv.dev) |
 | `estate_sweep.py secrets\|deps --root <dir> [--only <folder>…]` | secrets and dependencies across all your own repositories (§5.7) | secrets inside the sandbox, deps outside |
-| `engagement.py init/log/list` | the engagement journal (§5.6) | inside the sandbox |
+| `engagement.py init/log/retract/list` | the engagement journal and its table of retracted findings (§5.6) | inside the sandbox |
+| `poc_pair.py run … [--revert …]` / `verdict <dir>-runs` | one PoC on the copy, the control group and the copy with the fix reverted; the status is computed from markers in stdout (§5.6 "Checking a fix", oss-hunt §5) | run outside the sandbox (Docker), verdict inside |
 
-The other files in `references/`: `oss-hunt.md` is the method for finding vulnerabilities in open source, read by the main session and the hunter; `briefs.md` holds the rules for calling the `oss-*` agents; `calibration-rules.md` covers method calibration and method controls and is for the main session only. The history of script checks and controls is kept in `$H/calibration.md`, which you create on the first calibration run.
+The other files in `references/`: `live-controls.md` holds the control requests for live bug bounty targets; `oss-hunt.md` is the method for finding vulnerabilities in open source, read by the main session and the hunter; `briefs.md` holds the rules for calling the `oss-*` agents; `calibration-rules.md` covers method calibration and method controls and is for the main session only. The history of script checks and controls is kept in `$H/calibration.md`, which you create on the first calibration run.
