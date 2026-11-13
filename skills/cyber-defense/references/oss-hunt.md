@@ -40,6 +40,8 @@ The script uses regular expressions to find in the code the shapes each method w
 
 This is a queue, not a verdict. Before starting, open one place per rung. Remove a rung when the shape is false: for example `zipfile` only writes archives and never reads incoming ones. Add a rung by hand when you see a shape in the code that the regex missed. Write the changes into `methods.md` with a one-line reason.
 
+**Reconnaissance on a stronger model.** If the access covers a stronger model, before the ladder a separate session on it reads the code and returns a ranked candidate list, and the usual model writes the PoCs (`references/briefs.md`, section "Reconnaissance on a stronger model"). Record its outcome as a rung: `ledger.py run <project> stronger-recon target <hours> FOUND|NONE|TIMEOUT|BLOCKED`, where FOUND means at least one candidate with a CONFIRMED PoC. The ladder on the usual model follows it.
+
 **The ladder.** Walk the rungs top to bottom, one at a time:
 1. Run the rung's method by its section below.
 2. A candidate with a CONFIRMED PoC goes to step 6 at once, without waiting for the end of the ladder.
@@ -47,7 +49,6 @@ This is a queue, not a verdict. Before starting, open one place per rung. Remove
 4. When a rung is finished, record it: `ledger.py run <project> <step> target <hours> FOUND|NONE|TIMEOUT|BLOCKED --novelty <grade>`. FOUND means the rung produced at least one CONFIRMED PoC. Take the hours from the clock, not by eye: `date` at the start and at the end of the rung. If a hunter subagent walks the ladder, it returns these lines in its report and the main session copies them into the journal.
 5. The rung found nothing: move to the next one.
 6. Stop when a finding has passed `ledger.py gate` (then SKILL.md §5.6) or when the rungs run out. A hunter subagent does not run the gate: it stops at 5 findings or at the end of the ladder, and the main session runs the gate. In the report to the account owner list every rung with its outcome and hours, and call the rungs not walked "not walked". Continuing the ladder after a finding has passed the gate needs the account owner's word.
-7. Every rung gave NONE or TIMEOUT and a stronger model is available: offer the account owner one hunt on it over the most valuable subsystem (`references/briefs.md`, section "Hunt on a stronger model"). Do not start it without their "yes" for this target: it spends a scarce quota. Record its outcome the same way, `ledger.py run <project> stronger-model target <hours> …`.
 
 The rung limits in the script's output are estimates, not measurements. After 10 targets compare them with `ledger.py runs`. If a rung consistently yields zero findings for its hours, move it lower in the script's order.
 
