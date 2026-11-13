@@ -72,6 +72,25 @@ def cmd_log(a):
     print(line)
 
 
+RETRACTED = "\n## Retracted\n\n| Date | Finding | What looked like a vulnerability | What refuted it |\n|---|---|---|---|\n"
+
+
+def cmd_retract(a):
+    p = path_for(a.name)
+    if not p.exists():
+        sys.exit(f"no journal: {p} (run init first)")
+    text = p.read_text()
+    cells = " | ".join(c.replace("|", "/").replace("\n", " ").strip() for c in (a.finding, a.signal, a.disproof))
+    if f"| {cells} |" in text:  # the same retraction logged twice stays one row
+        print(f"already retracted: {a.finding}")
+        return
+    if "\n## Retracted\n" not in text:  # journals created before this table existed
+        text = text.rstrip("\n") + "\n" + RETRACTED
+    # The table is the last section, so a new row goes to the end of the file.
+    p.write_text(text.rstrip("\n") + f"\n| {dt.date.today()} | {cells} |\n")
+    print(f"retracted: {a.finding}")
+
+
 def cmd_list(_a):
     if not ROOT.exists():
         return
@@ -93,6 +112,12 @@ def main():
     lg.add_argument("name")
     lg.add_argument("text")
     lg.set_defaults(f=cmd_log)
+    rt = sub.add_parser("retract", help="record a candidate that turned out not to be a vulnerability")
+    rt.add_argument("name")
+    rt.add_argument("finding")
+    rt.add_argument("signal", help="what made it look real")
+    rt.add_argument("disproof", help="the control, PoC status or quote that refuted it")
+    rt.set_defaults(f=cmd_retract)
     sub.add_parser("list").set_defaults(f=cmd_list)
     a = ap.parse_args()
     a.f(a)

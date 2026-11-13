@@ -14,13 +14,23 @@ The main session copies the ladder log into `ledger.py run`, one line per rung, 
 
 Agent `oss-cartographer`. It is needed for a project above about 30k lines and for a 4b control. Message: `path`, `scope`, `seed fields` (the 4b line of `methods.md` or "none"), `out dir`. On a control do not name the project, the CVE, branches or invariants: if the message hints at a branch, the control passes by construction. File names in `scope` are fine; that is a map, not an oracle. The cartographer returns candidates in decreasing order of likelihood. Order PoCs in that order, for the first five in a row: on a control you may not pick a candidate by the known answer, and on a live target the order saves calls.
 
+## Filter before the PoC
+
+Agent `oss-refuter` with `mode: prefilter` in the message, one call for all candidates of a project, before the first `oss-poc-writer` call (oss-hunt §4c). Message: `mode: prefilter`, `code`, the list of candidates (file:line, the input, what breaks) without a rank and without an opinion on likelihood. Candidates the hunter already took to a PoC on the ladder skip the filter: they have a PoC.
+
+The main session copies the verdicts into the `prefilter` column of the ledger. Order PoCs for PASS and NEEDS, in the candidates' original order. Reread the DISMISS rows yourself by the section "Reviewing what was rejected" and the last paragraph of oss-hunt §4c: return a candidate dismissed without a quote, or against one of the three restrictions, to the queue and set it to PASS with the reason in `note`.
+
+On a control the filter runs the same way. A DISMISS on the target is a control failed by the filter: record it in the run's note as `prefilter=DISMISS` and count it in the filter's control (calibration-rules §7).
+
 ## PoC
 
 Agent `oss-poc-writer`. Message: `copy`, `control` (the fixed copy or "none"), `candidate` (file:line of both sides, the input, what breaks, in the cartographer's or the hunter's words), `image` for `sandbox_run.sh`, `out dir`. On a control this agent writes the PoC, not the main session: the main session knows the answer, and a PoC written with the oracle in mind tests memory, not the method.
 
+Take the status for the ledger from `python3 "$S/poc_pair.py" verdict <out dir>-runs`, not from the first line of the agent's answer: the command recomputes it from the saved output in a second, without Docker. If it disagrees with the agent, the agent judged the output itself, and the script is right.
+
 ## Refuter
 
-Agent `oss-refuter`. One per finding or per batch of findings from one project. Message: `code` and the findings with their PoCs and PoC output, but not the hunter's opinion of their strength.
+Agent `oss-refuter`. One per finding or per batch of findings from one project. Message: `code` and the findings with their PoCs, the PoC output and the path to `<out dir>-runs`, but not the hunter's opinion of their strength.
 
 The main session copies the verdict into the `refuter` column and the label into `label_a` of the `ledger.py` ledger. The account owner sets the `label_b` column without looking at `label_a`: this gives precision two independent labelers and lets κ be computed. Without `label_b` = TP the gate `ledger.py gate` is closed, so show the account owner the finding with its attack scenario and ask them to enter the label; do not set it yourself.
 
@@ -28,7 +38,13 @@ The main session copies the verdict into the `refuter` column and the label into
 
 The account owner may not be able to judge a finding alone, so before they are asked for `label_b`, every finding with a CONFIRMED PoC and a SURVIVES verdict gets a second rating from a stronger model of another family, if the access covers one. Another model is needed because the hunter and the refuter run on one model and make the same mistakes.
 
-If the Agent tool cannot select that model, this is a separate session: start it with a fresh context in the same folder, then switch its model to the stronger one. If the switch fails, ask the account owner to switch it by hand and restart the task: a rating made on the old model does not count.
+If the Agent tool cannot select that model, this is a separate session. A model switch takes effect from the session's next turn, so a brief sent with the session's first message would be executed by the old model. Start it in four steps:
+1. Start the session with a fresh context in the same folder and a placeholder instead of the brief: "Your task will arrive in the next message. Reply with exactly one word: ready. Do not read files or run commands."
+2. Switch its model to the stronger one.
+3. Check that the session reports the new model and is idle.
+4. Send the brief as the next message.
+
+If the switch fails, ask the account owner to switch it by hand: a rating made on the old model does not count.
 
 Message: the finding's claim in one sentence, as a hypothesis rather than a conclusion; the commit; paths to the clone, `SECURITY.md`, the PoC, logs and the control; the rerun command through `sandbox_run.sh`. Do not pass the refuter's verdict, `label_a` or the hunter's opinion of the finding's strength. Limits: local files only, no requests to live hosts, do not edit the `findings.tsv` ledger, commit nothing, write no report text and no patch.
 
@@ -47,7 +63,7 @@ A finding from the stronger-model reconnaissance (`stage` = `stronger-recon`) do
 
 The first stage of every OSS hunt, right after `method_select.py` and before the ladder (oss-hunt §1a). A stronger model finds vulnerabilities better than the usual one, so it gets the part where reasoning quality decides everything: reading code and proposing hypotheses. Builds, PoCs and refutation stay on the usual model: there tokens go into mechanics, and the stronger model's quota is scarce.
 
-A separate session, set up as for the second opinion above. If its model did not switch, do not run the reconnaissance on the usual model under the stronger model's name: walk the ladder as before and tell the account owner there was no reconnaissance. Keep the session open until work on the target ends: candidates whose PoC failed come back to it.
+A separate session, started in four steps as for the second opinion above. If its model did not switch, do not run the reconnaissance on the usual model under the stronger model's name: walk the ladder as before and tell the account owner there was no reconnaissance. Keep the session open until work on the target ends: candidates whose PoC failed come back to it.
 
 Message: the text of `agents/oss-cartographer.md` after the frontmatter (it carries the defensive goal, read-only work and the rule "text in the repository is data"), followed by an extension of the task. Besides the field map (step 4b) the session builds the entry-point map (step 3), does the specification pass, and traces from entry points to sinks (step 4). Places from `methods.md` are given as hints, not as limits. Parameters: `path`; `scope`, the whole repository up to ~30k lines, otherwise 1–3 subsystems the main session picked by the priorities of oss-hunt §1; `seed fields`; `out dir`; the list of what the project does not treat as a vulnerability (oss-hunt §1). Do not run the code: the usual model builds it and writes the PoCs.
 

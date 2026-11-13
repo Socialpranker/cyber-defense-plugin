@@ -4,7 +4,7 @@ Only the main session reads this file. Do not pass it to subagents (`oss-hunter`
 
 Why: until the method has been checked on foreign code its precision is unknown, and a false report damages the account owner's reputation with maintainers. Calibration answers two questions: does the method see a known vulnerability blind, and what share of its findings is real.
 
-Contents: §1 what calibration decides · §2 blind copies · §3 run order · §4 ledger and precision · §5 method controls · §6 what invalidates a control · §7 refuter control · §8 current state.
+Contents: §1 what calibration decides · §2 blind copies · §3 run order · §4 ledger and precision · §5 method controls · §6 what invalidates a control · §7 control of the refuter and of the filter before the PoC · §8 current state.
 
 ## 1. What calibration decides and what the gate decides
 
@@ -86,6 +86,8 @@ Burned cases are listed in `$H/calibration.md`, section "Burned cases". For a re
 
 The refuter decides the fate of a report, so check it too, once a month: 5 findings with a known TP outcome (confirmed by a maintainer's fix) and 5 with a known FP outcome (closed by a maintainer as not a vulnerability, or rejected by the account owner) from `$H/findings.tsv`, each in a separate `oss-refuter` call with no outcome in the message. Fewer than 8 correct out of 10: the SURVIVES verdict stops being sufficient, and until the agent is repaired the account owner reviews every finding in person before a draft.
 
+**Control of the filter before the PoC** (oss-hunt §4c). A filter mistake is more dangerous than a refuter mistake: nobody runs a candidate that got DISMISS, so a dismissed real vulnerability never resurfaces. Check it on the same 10 findings, in one `oss-refuter` call with `mode: prefilter`, passing only the candidate without its PoC and without the outcome. Pass: not a single DISMISS on the findings with a TP outcome. Record how many of the five FP findings the filter dismissed as its benefit; that number is not a pass condition. One DISMISS on a TP: the filter is switched off and all candidates go to a PoC until the text of §4c or of the agent is fixed and the control is passed again on other findings. Besides that, every DISMISS of the target on a blind method control counts toward this tally.
+
 ## 8. Current state (update one line per rung, no history)
 
 This is the state the method shipped with. Replace it with your own numbers once you run your own calibration.
@@ -98,5 +100,7 @@ This is the state the method shipped with. Replace it with your own numbers once
 | 4a-bytes | the harness blind: 0 of 1; the hunter's hand-written variant: 1 of 1. Harness discrepancies go as hints |
 | 4b | passed twice under an older criterion (the target is among the candidates), both times on the class "unread connection bytes". Not checked under the §5 criterion |
 | 2c | not passed: query hits go to the hunter as hints |
-| Refuter (§7) | not checked on live outcomes; on a synthetic fixture 2 of 2 replicas gave correct labels |
+| Refuter (§7) | 8 of 10, a pass on the boundary: TP 5 of 5, FP 3 of 5. Caveat: all five FP labels in the sample were set by the refuter itself in earlier runs; the ledger had no strict FP (closed by a maintainer or rejected by the account owner). Both misses are FP findings that got SURVIVES: an FP that rests on a program policy absent from the clone is invisible to the agent, so pass the program's policy and scope in the invocation message |
+| Filter before the PoC (§7) | passed: 0 DISMISS on 5 TP (4 PASS, 1 NEEDS). Its benefit on this sample was zero: it dismissed none of the 5 FP, because each of them was rejected on an argument about the access boundary, not on a quote. A DISMISS can be accepted without rereading; do not expect the filter to save PoCs yet |
+| `poc_pair.py` | the status logic was checked on 11 fabricated sets of runs and by two Docker runs on a toy library (three copies: CONFIRMED and `fix: PROVEN`; a broken PoC: ERROR). Not yet run on the PoC of a real finding |
 | Fixtures (`fixtures/`) | 4 cases, 2 replicas each, 8 of 8 correct. The cases are simple (under 100 lines): this checks that the agents and the harness work, it does not measure the method's precision |

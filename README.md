@@ -83,7 +83,8 @@ flowchart TD
     L --> R4a[4a. Parsers that disagree on one input]
     L --> R4b[4b. Modules that disagree on a shared field]
     R2 & R2a & R2b & R2c & R4 & R4a & R4b --> C[Candidates]
-    C --> P[5. PoC in a container, with a fixed copy as control]
+    C --> T[4c. Filter: reading alone drops a candidate only with a quote]
+    T -->|PASS or NEEDS| P[5. PoC in a container, with a fixed copy as control]
     P -->|CONFIRMED| F[6. Refuter tries to prove the finding false]
     F -->|SURVIVES| G[ledger.py gate: you label the finding yourself]
     G -->|TP| D[Draft report. You decide whether to send it]
@@ -94,7 +95,9 @@ Four subagents do the work, each in its own context, so that none of them inheri
 - `oss-hunter` walks the ladder on one copy of the repository and returns findings with the status of each PoC.
 - `oss-cartographer` maps how different modules read the same field of shared state (a request, a session) and lists the places where they disagree.
 - `oss-poc-writer` writes and runs the PoC for one candidate on the vulnerable copy and on the fixed one.
-- `oss-refuter` receives a finding without the hunter's opinion of it and tries to prove it false: a check higher up the call stack, an unreachable path, a configuration nobody uses.
+- `oss-refuter` receives a finding without the hunter's opinion of it and tries to prove it false: a check higher up the call stack, an unreachable path, a configuration nobody uses. In a second mode it filters candidates before any PoC is written, and may drop one only with a quoted line of code or documentation.
+
+The PoC writer does not decide the status of its own PoC. Every PoC prints `POC_REACHED` before its oracle runs and then `POC_HIT` or `POC_MISS`, and `poc_pair.py` computes the status from the saved output of the same command on the vulnerable copy and on the fixed one. A PoC that crashed during setup on the fixed copy therefore reads as an error, not as "the fix works".
 
 Before a draft the skill reads the project's `AGENTS.md`, `AI_POLICY.md` and `CONTRIBUTING` file. If the project bans AI-assisted findings altogether, the skill stops. If it bans only AI-written text, the skill drafts nothing: it hands you the facts and the PoC, and you verify the finding and write the report yourself.
 
@@ -111,21 +114,24 @@ All scripts live in `skills/cyber-defense/scripts/`. The full table with argumen
 | `introspector.py` | Shows which code of an OSS-Fuzz project its fuzzers never reach. |
 | `diff_harness.py` | Feeds one input to several parsers of the same format (URLs, paths, hosts, headers, ZIP archives) and reports where they disagree. |
 | `sandbox_run.sh` | Runs foreign code in a container with read-only sources and, unless `--net` is passed, no network. |
+| `poc_pair.py` | Runs one PoC on the vulnerable copy, the fixed copy and, for a fix check, the fixed copy with the fix reverted, and prints one status. |
 | `replay_prep.sh` | Checks out a repository at the last release before a known fix, for blind tests of the method. |
 | `cargo_lock_at.py` | Rolls `Cargo.lock` back to the crate versions that existed on a given date. |
-| `estate_sweep.py` | Checks every repository in a folder for secrets and vulnerable dependencies. |
-| `engagement.py` | Keeps a journal of one engagement: target, policy, hypotheses, outcomes. |
+| `estate_sweep.py` | Checks every repository in a folder for secrets and vulnerable dependencies, and reports a repository it could not measure as unassessed, not as clean. |
+| `engagement.py` | Keeps a journal of one engagement: target, policy, hypotheses, outcomes, and the candidates that were retracted. |
 | `ledger.py` | Keeps the findings ledger, computes precision, and gates the report draft. |
 | `clang-asan.Dockerfile` | Builds an image with sanitizers and libFuzzer for C and C++ targets. |
 
 ## Status
 
-Version 0.3.0 is an early release, and the method has not passed its own calibration. Calibration here means two measurements: whether the method finds a known vulnerability without being told where it is, and what share of its findings turn out to be real.
+Version 0.4.0 is an early release, and the method has not passed its own calibration. Calibration here means two measurements: whether the method finds a known vulnerability without being told where it is, and what share of its findings turn out to be real.
 
 The numbers as of November 2026:
 
 - On live targets, 8 findings had a confirmed PoC, and 3 of those 8 were accepted as real. A PoC that runs is therefore not enough, which is why the refuter and your own review come after it.
 - Method calibration is not passed. The plugin's own rules require 30 findings with two independent labels, one from the refuter agent or a known outcome and one from you, before a precision number may be quoted, and that count has not been reached.
+- The refuter agent labelled 8 of 10 past findings correctly, which is the pass mark: all 5 real ones and 3 of 5 false ones. The false ones in that sample had been labelled by the refuter itself in earlier runs, so the test is weaker than it looks.
+- The filter before the PoC dropped none of the 5 real findings and none of the 5 false ones: it is safe on this sample and has not saved any work yet.
 - Rung 4a in its mode for binary formats found the known bug blind in 0 of 1 attempts.
 - Rung 2c has not passed its control.
 - Agents solved the four synthetic test cases in 8 runs of 8. These cases are simple, under 100 lines each, so the result shows that the agents and the harness work. It says nothing about precision on real code.
