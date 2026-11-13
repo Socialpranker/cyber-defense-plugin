@@ -40,8 +40,8 @@ The account owner may not be able to judge a finding alone, so before they are a
 
 If the Agent tool cannot select that model, this is a separate session. A model switch takes effect from the session's next turn, so a brief sent with the session's first message would be executed by the old model. Start it in four steps:
 1. Start the session with a fresh context in the same folder and a placeholder instead of the brief: "Your task will arrive in the next message. Reply with exactly one word: ready. Do not read files or run commands."
-2. Switch its model to the stronger one.
-3. Check that the session reports the new model and is idle.
+2. Switch its model to the stronger one, then set its effort to high: a new session may start at a lower effort, and the reconnaissance measurements on real code ran at high.
+3. Check that the session reports the new model and effort high, and is idle.
 4. Send the brief as the next message.
 
 If the switch fails, ask the account owner to switch it by hand: a rating made on the old model does not count.

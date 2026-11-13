@@ -67,6 +67,8 @@ General rules:
 | 4b | the target is among the first 5 candidates of the cartographer in its own order, and `oss-poc-writer` got CONFIRMED on that candidate. PoCs are written for the first 5 candidates in a row, with no selection by the answer; the number of CONFIRMED among non-target ones is recorded as false | the PoC is clean on the fixed copy. The cartographer may legitimately flag the same branch, so there is no negative control at the map level | 8 h for three runs |
 | 2c | the query hits the line that the fix removes or guards with a check, and does not hit the same line after the fix | the copy after the fix: the line is not flagged | 4 h |
 
+**Comparing models on one stage** (which model gets the reconnaissance, the refutation and so on). Only the model changes: the same copies, the same brief word for word (check by comparing the brief files with paths normalised, plus a control pair from different cases that must differ), the same effort, the same harness (session against session, not session against subagent). Use only cases published after the training cutoff of both models. One blind judge scores all outputs at once, under neutral names that do not reveal the model. Write the decision rule before the runs. With 6 cases and one run per cell, draw a conclusion only from a difference of two targets or more; a smaller difference is recorded as "not visible", and the account owner decides, weighing what each model costs in usage quota.
+
 Held-out set: keep 2 or 3 cases per rung that were never read while the method was being edited. After a run, a case that led to an edit of `oss-hunt.md`, an agent or a script moves to the burned ones. For 4b at least one control is needed on confusion of two modules around one field (type A or B), not on unread bytes.
 
 ## 6. What invalidates a control
@@ -94,7 +96,7 @@ This is the state the method shipped with. Replace it with your own numbers once
 
 | What | State |
 |---|---|
-| Reconnaissance on a stronger model (`stronger-recon`) | `lib-*` fixtures, 13.11.2026: 8 of 9 runs, cases 3/3, 3/3, 2/3 (in the failed run the target was in the top five, but the README bait was not named), 0 false candidates in the top five. The fixtures are under 100 lines, so this shows the stage works, not its precision on real code. Not measured: a blind 4b control on a CVE published after that model's training cutoff (§2), stronger model against the usual one, three runs each |
+| Reconnaissance on a stronger model (`stronger-recon`) | `lib-*` fixtures, 13.11.2026: 8 of 9 runs, cases 3/3, 3/3, 2/3 (in the failed run the target was in the top five, but the README bait was not named), 0 false candidates in the top five. The fixtures are under 100 lines, so this shows the stage works, not its precision on real code. Stronger model against the usual one on real code: not measured yet; the test is prepared with the same brief on 6 cases published after both models' training cutoff, decision rule written before the runs |
 | Method calibration (§1) | not passed: 1 of 2 clean targets found blind, no runs on fixed copies, no ledger row has two labels |
 | Live targets | of 8 findings with a CONFIRMED PoC, 3 were accepted as real |
 | 4a-bytes | the harness blind: 0 of 1; the hunter's hand-written variant: 1 of 1. Harness discrepancies go as hints |
