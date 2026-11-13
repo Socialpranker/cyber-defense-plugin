@@ -30,7 +30,7 @@ Columns (TSV, edit by hand or with any editor):
   project   e.g. somelib
   run       cal1, cal2, hunt-<name>
   title     short, no exploit details
-  stage     method step that produced it: 2, 2a, 2b, 2c, 3, 4, 4-spec, 4a, 4a-bytes, 4b, 5a, stronger-recon, rejected-review
+  stage     method step that produced it: 2, 2a, 2b, 2c, 3, 4, 4-spec, 4a, 4a-bytes, 4b, 5a, recon, stronger-recon (before 13.11.2026), rejected-review
   prefilter - | PASS | DISMISS | NEEDS   verdict of the pre-PoC filter (oss-hunt §4c); '-' = not run.
             A ledger with the old header (no such column) still loads, every row reads as '-'.
   poc       NONE | CONFIRMED | NOT_REPRODUCED | BLOCKED | INCONCLUSIVE | ERROR

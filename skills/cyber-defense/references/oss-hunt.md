@@ -40,7 +40,7 @@ The script uses regular expressions to find in the code the shapes each method w
 
 This is a queue, not a verdict. Before starting, open one place per rung. Remove a rung when the shape is false: for example `zipfile` only writes archives and never reads incoming ones. Add a rung by hand when you see a shape in the code that the regex missed. Write the changes into `methods.md` with a one-line reason.
 
-**Reconnaissance on a stronger model.** If the access covers a stronger model, before the ladder a separate session on it reads the code and returns a ranked candidate list, and the usual model writes the PoCs (`references/briefs.md`, section "Reconnaissance on a stronger model"). Record its outcome as a rung: `ledger.py run <project> stronger-recon target <hours> FOUND|NONE|TIMEOUT|BLOCKED`, where FOUND means at least one candidate with a CONFIRMED PoC. The ladder on the usual model follows it.
+**Reconnaissance.** Before the ladder a subagent on the usual model reads the code and returns a ranked candidate list, and `oss-poc-writer` writes the PoCs (`references/briefs.md`, section "Reconnaissance"). Record its outcome as a rung: `ledger.py run <project> recon target <hours> FOUND|NONE|TIMEOUT|BLOCKED`, where FOUND means at least one candidate with a CONFIRMED PoC. The ladder follows it.
 
 **The ladder.** Walk the rungs top to bottom, one at a time:
 1. Run the rung's method by its section below.
