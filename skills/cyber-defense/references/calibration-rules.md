@@ -94,7 +94,7 @@ This is the state the method shipped with. Replace it with your own numbers once
 
 | What | State |
 |---|---|
-| Reconnaissance on a stronger model (`stronger-recon`) | not measured. First measurement: the `lib-*` fixtures and one blind 4b control, three runs each; check the controls against that model's training cutoff (§2) |
+| Reconnaissance on a stronger model (`stronger-recon`) | `lib-*` fixtures, 13.11.2026: 8 of 9 runs, cases 3/3, 3/3, 2/3 (in the failed run the target was in the top five, but the README bait was not named), 0 false candidates in the top five. The fixtures are under 100 lines, so this shows the stage works, not its precision on real code. Not measured: a blind 4b control on a CVE published after that model's training cutoff (§2), stronger model against the usual one, three runs each |
 | Method calibration (§1) | not passed: 1 of 2 clean targets found blind, no runs on fixed copies, no ledger row has two labels |
 | Live targets | of 8 findings with a CONFIRMED PoC, 3 were accepted as real |
 | 4a-bytes | the harness blind: 0 of 1; the hunter's hand-written variant: 1 of 1. Harness discrepancies go as hints |
