@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://github.com/Socialpranker/cyber-defense-plugin/actions/workflows/ci.yml"><img src="https://github.com/Socialpranker/cyber-defense-plugin/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
-  <a href=".claude-plugin/plugin.json"><img src="https://img.shields.io/badge/version-0.2.0-green.svg" alt="Version 0.2.0"></a>
+  <a href=".claude-plugin/plugin.json"><img src="https://img.shields.io/badge/version-0.3.0-green.svg" alt="Version 0.3.0"></a>
   <a href="#status"><img src="https://img.shields.io/badge/method-not%20calibrated-orange.svg" alt="Method status: not calibrated"></a>
 </p>
 
@@ -120,7 +120,7 @@ All scripts live in `skills/cyber-defense/scripts/`. The full table with argumen
 
 ## Status
 
-Version 0.2.0 is an early release, and the method has not passed its own calibration. Calibration here means two measurements: whether the method finds a known vulnerability without being told where it is, and what share of its findings turn out to be real.
+Version 0.3.0 is an early release, and the method has not passed its own calibration. Calibration here means two measurements: whether the method finds a known vulnerability without being told where it is, and what share of its findings turn out to be real.
 
 The numbers as of November 2026:
 

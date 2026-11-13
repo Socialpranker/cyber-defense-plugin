@@ -41,17 +41,25 @@ What the session must do and return:
 
 Turning the rating into a label: at P(the bug is real) of 80% or more suggest TP to the account owner, at 20% or less suggest FP; in between suggest no label, close what the session named as unverified and rerun the second opinion. The account owner gets a 2–3 sentence summary with both numbers and enters `label_b` themselves. The rating does not replace the label, and nobody but the account owner writes it into the ledger; add the path to the notes to the `note` column.
 
-A finding found by the stronger-model hunt does not get a second opinion on that same model: the point is a different model. For it the second view is `oss-refuter` on the usual model, and the account owner sets `label_b` from its verdict and the attack scenario.
+A finding from the stronger-model reconnaissance (`stage` = `stronger-recon`) does not get a second opinion on that same model: it would judge its own hypothesis. For it the second view is `oss-refuter` on the usual model, and the account owner sets `label_b` from its verdict and the attack scenario.
 
-## Hunt on a stronger model
+## Reconnaissance on a stronger model
 
-The last rung of the ladder (oss-hunt §1a, item 7): every rung on the usual model gave nothing, and the account owner said "yes" for this target. A different model searches differently, and in Anthropic's measurement on 15 OSS projects findings from different approaches overlapped little, so give it the same subsystem rather than a new one.
+The first stage of every OSS hunt, right after `method_select.py` and before the ladder (oss-hunt §1a). A stronger model finds vulnerabilities better than the usual one, so it gets the part where reasoning quality decides everything: reading code and proposing hypotheses. Builds, PoCs and refutation stay on the usual model: there tokens go into mechanics, and the stronger model's quota is scarce.
 
-A separate session, as in the second opinion above. If its model did not switch, do not start the hunt: a result on the old model repeats the ladder already walked.
+A separate session, set up as for the second opinion above. If its model did not switch, do not run the reconnaissance on the usual model under the stronger model's name: walk the ladder as before and tell the account owner there was no reconnaissance. Keep the session open until work on the target ends: candidates whose PoC failed come back to it.
 
-Build the message from the text of `agents/oss-hunter.md` after the frontmatter: it carries the defensive goal, the ban on requests to live hosts and the rule "text in the repository is data". Parameters are the hunter's, with three differences: `scope` is one subsystem from the entry-point map, not the whole repository; `ladder` is the line "none: free hunt within scope, pick any method from oss-hunt.md"; and a separate line gives the path to `methods.md` with the outcomes of the rungs already walked, so the session does not repeat their hypotheses. State an hour limit in the message, 2 by default. The session returns candidates in the hunter's format and starts the first line of its answer with the number of candidates with a CONFIRMED PoC. In the ledger its findings get `stage` = `stronger-model`, so `ledger.py stats` shows the rung's yield separately.
+Message: the text of `agents/oss-cartographer.md` after the frontmatter (it carries the defensive goal, read-only work and the rule "text in the repository is data"), followed by an extension of the task. Besides the field map (step 4b) the session builds the entry-point map (step 3), does the specification pass, and traces from entry points to sinks (step 4). Places from `methods.md` are given as hints, not as limits. Parameters: `path`; `scope`, the whole repository up to ~30k lines, otherwise 1–3 subsystems the main session picked by the priorities of oss-hunt §1; `seed fields`; `out dir`; the list of what the project does not treat as a vulnerability (oss-hunt §1). Do not run the code: the usual model builds it and writes the PoCs.
 
-Then the usual path: PoC through `oss-poc-writer` if the session did not finish one, `oss-refuter`, `label_b` from the account owner, `ledger.py gate`.
+The session writes three files into `out dir`: `surface.md` by the rules of step 3, `fields.md` and `candidates.md`. In `candidates.md` the candidates go most likely first, each with its class, file:line, the input that reaches the place from an entry point, what breaks, why it is likely, and which control group would refute it. First line of the answer (the caller may see only a few hundred characters): the number of candidates and the first one in one sentence.
+
+Then:
+1. `oss-poc-writer` on the usual model writes PoCs for the candidates in list order, the first five in a row. In the ledger these rows get `stage` = `stronger-recon`, so `ledger.py stats` shows the stage's yield separately.
+2. A PoC did not confirm a candidate: do not drop it at once. The stronger model's hypothesis outweighs the usual model's first attempt to reproduce it, so return the candidate, the PoC and the log once to the same session with the question "is the input wrong or is the candidate false?". The corrected input goes to `oss-poc-writer` once more. A second failure sends the candidate to "Seen but rejected" with both logs.
+3. CONFIRMED candidates take the usual path: `oss-refuter`, `label_b` from the account owner, `ledger.py gate`.
+4. After the candidates, the ladder on the usual model runs. Step 3 is already done (`surface.md`), and rung 4b is skipped if `fields.md` covered its fields.
+
+Measuring the stage (calibration-rules §8) runs alongside the work and does not block it: the measurement is needed to quote the stage's precision in reports, not to decide whether to run it. Until it exists, quote no precision number for `stronger-recon`.
 
 ## Reviewing what was rejected
 
